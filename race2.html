@@ -1,0 +1,1867 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Race Street - Smooth Control Racing</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Racing+Sans+One&family=Orbitron:wght@400;700;900&display=swap">
+    <style>
+        /* Reset dan Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            user-select: none;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            position: fixed;
+            background: #000;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+        }
+
+        /* Game Container - Fullscreen */
+        #gameContainer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: #000;
+        }
+
+        /* Canvas - Optimized for performance */
+        #gameCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+            z-index: 1;
+        }
+
+        /* UI Overlay */
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        /* Top Bar */
+        .top-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: clamp(10px, 2.5vw, 15px);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 100%);
+            pointer-events: auto;
+            z-index: 10;
+        }
+
+        /* Left Action Buttons */
+        .left-actions {
+            display: flex;
+            flex-direction: column;
+            gap: clamp(8px, 2vw, 12px);
+        }
+
+        .action-btn {
+            width: clamp(45px, 11vw, 60px);
+            height: clamp(45px, 11vw, 60px);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: clamp(18px, 5vw, 22px);
+            color: white;
+            cursor: pointer;
+            touch-action: manipulation;
+            transition: all 0.1s;
+            box-shadow: 0 3px 0 rgba(0, 0, 0, 0.4);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            pointer-events: auto;
+        }
+
+        .action-btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
+        }
+
+        .btn-pause {
+            background: linear-gradient(145deg, #ffff00, #cccc00);
+        }
+
+        .btn-nitro {
+            background: linear-gradient(145deg, #00ffff, #00cccc);
+            box-shadow: 0 3px 0 rgba(0, 0, 0, 0.4), 0 0 15px rgba(0, 255, 255, 0.5);
+        }
+
+        .btn-boost {
+            background: linear-gradient(145deg, #ff00ff, #cc00cc);
+            box-shadow: 0 3px 0 rgba(0, 0, 0, 0.4), 0 0 15px rgba(255, 0, 255, 0.5);
+        }
+
+        /* Stats Container */
+        .stats-container {
+            display: flex;
+            flex-direction: column;
+            gap: clamp(6px, 1.5vw, 8px);
+            background: rgba(0, 20, 40, 0.85);
+            padding: clamp(8px, 2vw, 12px);
+            border-radius: 12px;
+            border: 2px solid #0088ff;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            min-width: 120px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            min-width: 110px;
+        }
+
+        .stat-label {
+            font-size: clamp(10px, 2.5vw, 12px);
+            color: #88ddff;
+            font-weight: 600;
+        }
+
+        .stat-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(14px, 3.5vw, 16px);
+            font-weight: 900;
+            color: #00ffea;
+            text-shadow: 0 0 3px #00ffea;
+        }
+
+        /* Game Logo */
+        .game-logo {
+            position: absolute;
+            top: clamp(10px, 2.5vw, 15px);
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: 'Racing Sans One', cursive;
+            font-size: clamp(18px, 5vw, 24px);
+            color: #00ffea;
+            text-shadow: 0 0 8px #00ffea, 0 0 16px #0080ff;
+            letter-spacing: 1px;
+            z-index: 11;
+        }
+
+        /* Nitro Indicator */
+        .nitro-indicator {
+            position: absolute;
+            top: clamp(80px, 20vh, 100px);
+            left: clamp(10px, 2.5vw, 15px);
+            width: clamp(40px, 10vw, 50px);
+            height: clamp(100px, 25vh, 140px);
+            background: rgba(0, 10, 20, 0.85);
+            border-radius: 10px;
+            border: 2px solid #00ffff;
+            padding: 5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            pointer-events: auto;
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+        }
+
+        .nitro-label {
+            color: #00ffff;
+            font-size: clamp(10px, 2.5vw, 12px);
+            font-weight: bold;
+            margin-bottom: 5px;
+            text-shadow: 0 0 3px #00ffff;
+        }
+
+        .nitro-bar-bg {
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 40, 60, 0.7);
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .nitro-bar {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to top, #00ffff 0%, #0088ff 100%);
+            transition: height 0.15s ease-out;
+            will-change: height;
+        }
+
+        .nitro-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-90deg);
+            color: white;
+            font-weight: bold;
+            font-size: clamp(12px, 3vw, 14px);
+            white-space: nowrap;
+        }
+
+        /* Bottom Controls - Enhanced Visual Feedback */
+        .bottom-controls {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            padding: clamp(15px, 4vw, 20px);
+            display: flex;
+            justify-content: center;
+            gap: clamp(30px, 8vw, 60px);
+            align-items: center;
+            pointer-events: auto;
+            z-index: 20;
+        }
+
+        .steering-btn {
+            width: clamp(80px, 20vw, 100px);
+            height: clamp(80px, 20vw, 100px);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: clamp(32px, 9vw, 40px);
+            color: white;
+            cursor: pointer;
+            touch-action: manipulation;
+            transition: all 0.1s;
+            box-shadow: 0 6px 0 rgba(0, 0, 0, 0.5);
+            border: 3px solid rgba(255, 255, 255, 0.2);
+            pointer-events: auto;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .steering-btn:active {
+            transform: translateY(3px);
+            box-shadow: 0 3px 0 rgba(0, 0, 0, 0.5);
+        }
+
+        .steering-btn.holding::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 120%;
+            height: 120%;
+            background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 70%);
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            animation: pulse 0.5s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from { opacity: 0.3; transform: translate(-50%, -50%) scale(1); }
+            to { opacity: 0.6; transform: translate(-50%, -50%) scale(1.2); }
+        }
+
+        .btn-left {
+            background: linear-gradient(145deg, #0066cc, #004499);
+        }
+
+        .btn-right {
+            background: linear-gradient(145deg, #0066cc, #004499);
+        }
+
+        /* Steering Indicator */
+        .steering-indicator {
+            position: absolute;
+            bottom: clamp(120px, 30vh, 150px);
+            left: 50%;
+            transform: translateX(-50%);
+            width: clamp(150px, 40vw, 200px);
+            height: 30px;
+            background: rgba(0, 20, 40, 0.7);
+            border-radius: 15px;
+            border: 2px solid #00aaff;
+            padding: 5px;
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            display: none;
+        }
+
+        .steering-indicator.active {
+            display: block;
+        }
+
+        .indicator-bar {
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 100, 200, 0.5);
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .indicator-fill {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            height: 100%;
+            width: 0;
+            background: linear-gradient(to right, #00ff00, #ffff00, #ff0000);
+            border-radius: 10px;
+            transition: width 0.1s ease-out;
+            transform: translateX(-50%);
+        }
+
+        .indicator-center {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            width: 2px;
+            height: 100%;
+            background: white;
+            transform: translateX(-50%);
+        }
+
+        /* Menu System */
+        .menu-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 5, 15, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            pointer-events: auto;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .menu-content {
+            background: rgba(0, 20, 40, 0.95);
+            border-radius: 20px;
+            padding: clamp(20px, 5vw, 30px);
+            width: min(90%, 400px);
+            border: 3px solid #00aaff;
+            box-shadow: 0 0 40px rgba(0, 170, 255, 0.5);
+        }
+
+        .menu-title {
+            font-family: 'Racing Sans One', cursive;
+            font-size: clamp(28px, 8vw, 40px);
+            color: #00ffea;
+            text-align: center;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #00ffea;
+        }
+
+        .menu-section {
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            color: #88ddff;
+            font-size: clamp(16px, 4vw, 18px);
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .difficulty-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .difficulty-btn {
+            flex: 1;
+            padding: 12px;
+            background: rgba(0, 40, 80, 0.7);
+            border: 2px solid #0088cc;
+            border-radius: 10px;
+            color: #88ddff;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        .difficulty-btn.active {
+            background: #0088cc;
+            color: white;
+            box-shadow: 0 0 15px rgba(0, 136, 204, 0.7);
+        }
+
+        .menu-button {
+            width: 100%;
+            padding: 15px;
+            margin: 8px 0;
+            background: linear-gradient(to right, #0088cc, #00aaff);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-weight: bold;
+            font-size: clamp(16px, 4vw, 18px);
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 4px 0 rgba(0, 100, 200, 0.5);
+        }
+
+        .menu-button:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 rgba(0, 100, 200, 0.5);
+        }
+
+        .menu-button.restart {
+            background: linear-gradient(to right, #ff6600, #ff9900);
+        }
+
+        /* Game Messages */
+        .game-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 10, 30, 0.98);
+            padding: clamp(20px, 5vw, 30px);
+            border-radius: 20px;
+            border: 3px solid #ff3300;
+            box-shadow: 0 0 40px rgba(255, 50, 0, 0.6);
+            z-index: 200;
+            width: min(85%, 350px);
+            text-align: center;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .message-title {
+            font-family: 'Racing Sans One', cursive;
+            font-size: clamp(28px, 8vw, 36px);
+            color: #ff3300;
+            margin-bottom: 15px;
+            text-shadow: 0 0 10px #ff3300;
+        }
+
+        .message-text {
+            color: #ffffff;
+            font-size: clamp(16px, 4vw, 18px);
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        /* Fullscreen Button */
+        .fullscreen-toggle {
+            position: absolute;
+            bottom: clamp(15px, 4vw, 20px);
+            right: clamp(15px, 4vw, 20px);
+            width: clamp(40px, 10vw, 50px);
+            height: clamp(40px, 10vw, 50px);
+            border-radius: 50%;
+            background: rgba(0, 40, 80, 0.8);
+            border: 2px solid #00aaff;
+            color: #00aaff;
+            font-size: clamp(18px, 5vw, 22px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 30;
+            pointer-events: auto;
+            transition: all 0.3s;
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+        }
+
+        .fullscreen-toggle:active {
+            background: rgba(0, 80, 160, 0.9);
+            transform: scale(0.95);
+        }
+
+        /* Loading Screen */
+        .loading-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(0, 170, 255, 0.3);
+            border-top: 5px solid #00aaff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: #00aaff;
+            font-size: 18px;
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* Hide elements */
+        .hidden {
+            display: none !important;
+        }
+
+        /* Media Queries */
+        @media (max-width: 480px) {
+            .steering-btn {
+                width: 85px;
+                height: 85px;
+                font-size: 36px;
+            }
+            
+            .action-btn {
+                width: 50px;
+                height: 50px;
+                font-size: 20px;
+            }
+            
+            .nitro-indicator {
+                width: 35px;
+                height: 90px;
+            }
+            
+            .steering-indicator {
+                width: 120px;
+                bottom: 110px;
+            }
+        }
+
+        @media (max-height: 600px) {
+            .top-bar {
+                padding: 8px;
+            }
+            
+            .bottom-controls {
+                padding: 10px;
+                gap: 40px;
+            }
+            
+            .nitro-indicator {
+                height: 80px;
+                top: 70px;
+            }
+            
+            .steering-btn {
+                width: 70px;
+                height: 70px;
+                font-size: 30px;
+            }
+            
+            .steering-indicator {
+                bottom: 90px;
+                height: 25px;
+            }
+        }
+
+        @media (orientation: landscape) and (max-height: 500px) {
+            .top-bar {
+                flex-direction: row;
+                align-items: center;
+            }
+            
+            .left-actions {
+                flex-direction: row;
+                gap: 10px;
+            }
+            
+            .stats-container {
+                flex-direction: row;
+                gap: 20px;
+            }
+            
+            .stat-row {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 2px;
+            }
+            
+            .bottom-controls {
+                justify-content: space-around;
+                padding: 8px;
+            }
+            
+            .steering-btn {
+                width: 65px;
+                height: 65px;
+                font-size: 28px;
+            }
+            
+            .steering-indicator {
+                bottom: 80px;
+                width: 100px;
+                height: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <!-- Loading Screen -->
+        <div id="loadingScreen" class="loading-screen">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">LOADING...</div>
+        </div>
+        
+        <!-- Game Canvas -->
+        <canvas id="gameCanvas"></canvas>
+        
+        <!-- UI Layer -->
+        <div class="ui-layer">
+            <!-- Game Logo -->
+            <div class="game-logo">RACE STREET</div>
+            
+            <!-- Top Bar -->
+            <div class="top-bar">
+                <!-- Left Action Buttons -->
+                <div class="left-actions">
+                    <button id="btnPause" class="action-btn btn-pause" title="Pause Game">
+                        <i class="fas fa-pause"></i>
+                    </button>
+                    <button id="btnNitro" class="action-btn btn-nitro" title="Nitro Boost">
+                        <i class="fas fa-fire"></i>
+                    </button>
+                    <button id="btnBoost" class="action-btn btn-boost" title="Speed Boost">
+                        <i class="fas fa-bolt"></i>
+                    </button>
+                </div>
+                
+                <!-- Stats Container -->
+                <div class="stats-container">
+                    <div class="stat-row">
+                        <span class="stat-label">SCORE</span>
+                        <span id="scoreDisplay" class="stat-value">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">SPEED</span>
+                        <span id="speedDisplay" class="stat-value">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">LEVEL</span>
+                        <span id="levelDisplay" class="stat-value">1</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Nitro Indicator -->
+            <div class="nitro-indicator">
+                <div class="nitro-label">NITRO</div>
+                <div class="nitro-bar-bg">
+                    <div id="nitroBar" class="nitro-bar"></div>
+                    <div id="nitroText" class="nitro-text">100%</div>
+                </div>
+            </div>
+            
+            <!-- Steering Power Indicator -->
+            <div id="steeringIndicator" class="steering-indicator">
+                <div class="indicator-bar">
+                    <div id="indicatorFill" class="indicator-fill"></div>
+                    <div class="indicator-center"></div>
+                </div>
+            </div>
+            
+            <!-- Bottom Controls dengan Accelerated Steering -->
+            <div class="bottom-controls">
+                <button id="btnLeft" class="steering-btn btn-left" title="Steer Left (Hold for faster)">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <button id="btnRight" class="steering-btn btn-right" title="Steer Right (Hold for faster)">
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+            
+            <!-- Fullscreen Toggle -->
+            <button id="fullscreenBtn" class="fullscreen-toggle" title="Toggle Fullscreen">
+                <i class="fas fa-expand"></i>
+            </button>
+        </div>
+        
+        <!-- Main Menu -->
+        <div id="mainMenu" class="menu-overlay">
+            <div class="menu-content">
+                <h1 class="menu-title">RACE STREET</h1>
+                
+                <div class="menu-section">
+                    <div class="section-title">DIFFICULTY</div>
+                    <div class="difficulty-buttons">
+                        <button class="difficulty-btn active" data-difficulty="easy">EASY</button>
+                        <button class="difficulty-btn" data-difficulty="medium">MEDIUM</button>
+                        <button class="difficulty-btn" data-difficulty="hard">HARD</button>
+                    </div>
+                </div>
+                
+                <div class="menu-section">
+                    <button id="startGameBtn" class="menu-button">
+                        <i class="fas fa-play"></i> START RACE
+                    </button>
+                    
+                    <div class="controls-info" style="background: rgba(0,30,60,0.7); padding: 12px; border-radius: 10px; margin: 12px 0; border-left: 4px solid #00ffcc;">
+                        <div style="color: #00ffcc; font-weight: bold; margin-bottom: 8px; font-size: 14px;">🎮 NEW SMOOTH CONTROLS:</div>
+                        <div style="color: #aaddff; font-size: 12px; line-height: 1.4;">
+                            <div><i class="fas fa-mouse-pointer"></i> Tap: Small movement</div>
+                            <div><i class="fas fa-history"></i> Hold: Faster movement</div>
+                            <div><i class="fas fa-tachometer-alt"></i> Indicator shows power</div>
+                        </div>
+                    </div>
+                    
+                    <button id="howToPlayBtn" class="menu-button">
+                        <i class="fas fa-question-circle"></i> HOW TO PLAY
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Pause Menu -->
+        <div id="pauseMenu" class="menu-overlay hidden">
+            <div class="menu-content">
+                <h1 class="menu-title">GAME PAUSED</h1>
+                
+                <div class="menu-section">
+                    <button id="resumeGameBtn" class="menu-button">
+                        <i class="fas fa-play"></i> RESUME
+                    </button>
+                    
+                    <button id="restartPauseBtn" class="menu-button restart">
+                        <i class="fas fa-redo"></i> RESTART
+                    </button>
+                    
+                    <button id="menuFromPauseBtn" class="menu-button">
+                        <i class="fas fa-home"></i> MAIN MENU
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Game Over Screen -->
+        <div id="gameOverScreen" class="menu-overlay hidden">
+            <div class="menu-content">
+                <h1 class="menu-title">RACE OVER</h1>
+                
+                <div class="menu-section">
+                    <div class="message-text">
+                        <div>FINAL SCORE: <span id="finalScore">0</span></div>
+                        <div>LEVEL REACHED: <span id="finalLevel">1</span></div>
+                        <div>HIGH SCORE: <span id="highScoreDisplay">0</span></div>
+                    </div>
+                    
+                    <button id="playAgainBtn" class="menu-button">
+                        <i class="fas fa-redo"></i> PLAY AGAIN
+                    </button>
+                    
+                    <button id="menuFromGameOverBtn" class="menu-button">
+                        <i class="fas fa-home"></i> MAIN MENU
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- How to Play Screen -->
+        <div id="howToPlayScreen" class="menu-overlay hidden">
+            <div class="menu-content">
+                <h1 class="menu-title">HOW TO PLAY</h1>
+                
+                <div class="menu-section">
+                    <div class="message-text" style="text-align: left; font-size: 14px; line-height: 1.6;">
+                        <p><strong>🎮 ENHANCED CONTROLS:</strong></p>
+                        <p><i class="fas fa-arrow-left"></i> <strong>LEFT:</strong> Tap for small move, Hold for fast move</p>
+                        <p><i class="fas fa-arrow-right"></i> <strong>RIGHT:</strong> Tap for small move, Hold for fast move</p>
+                        <p><i class="fas fa-fire"></i> <strong>NITRO:</strong> Tap for speed burst</p>
+                        <p><i class="fas fa-bolt"></i> <strong>BOOST:</strong> Hold for continuous boost</p>
+                        <p><i class="fas fa-pause"></i> <strong>PAUSE:</strong> Pause/resume game</p>
+                        
+                        <p style="margin-top: 15px;"><strong>📊 STEERING INDICATOR:</strong></p>
+                        <p>• <span style="color:#00ff00">Green</span>: Low power (tap)</p>
+                        <p>• <span style="color:#ffff00">Yellow</span>: Medium power</p>
+                        <p>• <span style="color:#ff0000">Red</span>: Full power (hold)</p>
+                        
+                        <p style="margin-top: 15px;"><strong>🎯 OBJECTIVE:</strong></p>
+                        <p>• Avoid other cars and obstacles</p>
+                        <p>• Stay on the road</p>
+                        <p>• Use nitro and boost wisely</p>
+                        <p>• Higher level = faster cars</p>
+                        
+                        <p style="margin-top: 15px;"><strong>💡 PRO TIPS:</strong></p>
+                        <p>• Use short taps for precise steering</p>
+                        <p>• Hold for quick lane changes</p>
+                        <p>• Watch the indicator for power level</p>
+                        <p>• Save nitro for tight situations</p>
+                    </div>
+                    
+                    <button id="backFromHowToBtn" class="menu-button">
+                        <i class="fas fa-arrow-left"></i> BACK
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // =============== GAME ENGINE ===============
+        const Game = {
+            // State
+            state: 'menu',
+            difficulty: 'medium',
+            score: 0,
+            level: 1,
+            speed: 0,
+            time: 0,
+            nitro: 100,
+            player: null,
+            obstacles: [],
+            roadWidth: 0,
+            roadX: 0,
+            frames: 0,
+            gameLoopId: null,
+            isFullscreen: false,
+            
+            // Enhanced Input System
+            input: {
+                left: {
+                    active: false,
+                    power: 0,        // 0-1, meningkat saat di-hold
+                    holdTime: 0,     // waktu hold dalam ms
+                    maxPower: 1.0    // power maksimum
+                },
+                right: {
+                    active: false,
+                    power: 0,
+                    holdTime: 0,
+                    maxPower: 1.0
+                },
+                boost: false,
+                nitro: false
+            },
+            
+            // Control constants
+            PLAYER_Y_POSITION: 0.7,
+            PLAYER_SPEED_MULTIPLIER: 25,
+            NITRO_CONSUMPTION: 2.5,
+            NITRO_RECOVERY: 0.5,
+            
+            // Steering constants
+            STEERING: {
+                BASE_MOVE: 20,           // Movement per frame saat tap
+                MAX_MOVE: 50,            // Movement per frame saat hold maksimal
+                POWER_INCREASE: 0.05,    // Seberapa cepat power meningkat
+                POWER_DECREASE: 0.1,     // Seberapa cepat power berkurang
+                TAP_THRESHOLD: 200,      // Waktu maksimum untuk dianggap tap (ms)
+                MAX_HOLD_TIME: 1000      // Waktu untuk mencapai power maksimum
+            }
+        };
+
+        // DOM Cache
+        const Elements = {
+            canvas: document.getElementById('gameCanvas'),
+            ctx: null,
+            scoreDisplay: document.getElementById('scoreDisplay'),
+            speedDisplay: document.getElementById('speedDisplay'),
+            levelDisplay: document.getElementById('levelDisplay'),
+            nitroBar: document.getElementById('nitroBar'),
+            nitroText: document.getElementById('nitroText'),
+            finalScore: document.getElementById('finalScore'),
+            finalLevel: document.getElementById('finalLevel'),
+            highScoreDisplay: document.getElementById('highScoreDisplay'),
+            steeringIndicator: document.getElementById('steeringIndicator'),
+            indicatorFill: document.getElementById('indicatorFill'),
+            loadingScreen: document.getElementById('loadingScreen'),
+            mainMenu: document.getElementById('mainMenu'),
+            pauseMenu: document.getElementById('pauseMenu'),
+            gameOverScreen: document.getElementById('gameOverScreen'),
+            howToPlayScreen: document.getElementById('howToPlayScreen')
+        };
+
+        // Difficulty settings
+        const Difficulty = {
+            easy: {
+                opponentSpeed: 3,
+                opponentFrequency: 100,
+                maxOpponents: 3,
+                playerSpeed: 4,
+                playerAcceleration: 0.15
+            },
+            medium: {
+                opponentSpeed: 4,
+                opponentFrequency: 80,
+                maxOpponents: 4,
+                playerSpeed: 5,
+                playerAcceleration: 0.18
+            },
+            hard: {
+                opponentSpeed: 5,
+                opponentFrequency: 60,
+                maxOpponents: 5,
+                playerSpeed: 6,
+                playerAcceleration: 0.21
+            }
+        };
+
+        // Performance tracking
+        const Performance = {
+            lastTime: 0,
+            deltaTime: 0,
+            fps: 60,
+            lastSteeringUpdate: 0
+        };
+
+        // =============== ENHANCED PLAYER CLASS ===============
+        class Player {
+            constructor() {
+                this.width = 45;
+                this.height = 80;
+                this.x = Elements.canvas.width / 2 - this.width / 2;
+                this.y = Elements.canvas.height * Game.PLAYER_Y_POSITION;
+                this.speed = 0;
+                this.maxSpeed = Difficulty[Game.difficulty].playerSpeed;
+                this.acceleration = Difficulty[Game.difficulty].playerAcceleration;
+                this.deceleration = 0.08;
+                this.nitroFuel = 100;
+                this.nitroMultiplier = 2.2;
+                this.boostMultiplier = 1.6;
+                this.moveSpeed = 25; // Base movement speed
+                this.lastNitroTime = 0;
+                this.nitroCooldown = 500;
+                
+                // Smooth movement properties
+                this.targetX = this.x;
+                this.smoothSpeed = 0.2; // Smoothing factor
+            }
+            
+            update(deltaTime) {
+                // Handle enhanced steering
+                this.updateSteering(deltaTime);
+                
+                // Auto acceleration
+                this.speed = Math.min(this.speed + this.acceleration * deltaTime, this.maxSpeed);
+                
+                // Apply boost
+                if (Game.input.boost && this.speed > 0) {
+                    this.speed = this.maxSpeed * this.boostMultiplier;
+                }
+                
+                // Apply nitro with cooldown
+                const now = Date.now();
+                if (Game.input.nitro && this.nitroFuel > 15 && now - this.lastNitroTime > this.nitroCooldown) {
+                    this.speed = this.maxSpeed * this.nitroMultiplier;
+                    this.nitroFuel -= Game.NITRO_CONSUMPTION * deltaTime;
+                    this.lastNitroTime = now;
+                    if (this.nitroFuel < 0) this.nitroFuel = 0;
+                } else {
+                    // Recover nitro
+                    if (this.nitroFuel < 100) {
+                        this.nitroFuel += Game.NITRO_RECOVERY * deltaTime;
+                        if (this.nitroFuel > 100) this.nitroFuel = 100;
+                    }
+                }
+                
+                // Smooth movement towards target
+                this.x += (this.targetX - this.x) * this.smoothSpeed;
+                
+                // Boundary check
+                const minX = Game.roadX + 20;
+                const maxX = Game.roadX + Game.roadWidth - this.width - 20;
+                this.x = Math.max(minX, Math.min(maxX, this.x));
+                this.targetX = Math.max(minX, Math.min(maxX, this.targetX));
+                
+                // Update game state
+                Game.speed = Math.floor(this.speed * Game.PLAYER_SPEED_MULTIPLIER);
+                Game.nitro = this.nitroFuel;
+            }
+            
+            updateSteering(deltaTime) {
+                const currentTime = Date.now();
+                
+                // Update left steering power
+                if (Game.input.left.active) {
+                    Game.input.left.holdTime += deltaTime * 16.67; // Convert to ms
+                    
+                    // Calculate power based on hold time
+                    let holdRatio = Math.min(Game.input.left.holdTime / Game.STEERING.MAX_HOLD_TIME, 1);
+                    
+                    // Exponential increase for better feel
+                    holdRatio = Math.pow(holdRatio, 1.5);
+                    
+                    // Increase power smoothly
+                    Game.input.left.power = Math.min(
+                        Game.input.left.power + Game.STEERING.POWER_INCREASE * deltaTime,
+                        holdRatio * Game.input.left.maxPower
+                    );
+                    
+                    // Move based on power
+                    const moveAmount = Game.STEERING.BASE_MOVE + 
+                                     (Game.STEERING.MAX_MOVE - Game.STEERING.BASE_MOVE) * Game.input.left.power;
+                    this.targetX -= moveAmount * deltaTime;
+                    
+                } else {
+                    // Decrease power when not active
+                    Game.input.left.power = Math.max(
+                        0,
+                        Game.input.left.power - Game.STEERING.POWER_DECREASE * deltaTime
+                    );
+                    Game.input.left.holdTime = 0;
+                }
+                
+                // Update right steering power
+                if (Game.input.right.active) {
+                    Game.input.right.holdTime += deltaTime * 16.67;
+                    
+                    let holdRatio = Math.min(Game.input.right.holdTime / Game.STEERING.MAX_HOLD_TIME, 1);
+                    holdRatio = Math.pow(holdRatio, 1.5);
+                    
+                    Game.input.right.power = Math.min(
+                        Game.input.right.power + Game.STEERING.POWER_INCREASE * deltaTime,
+                        holdRatio * Game.input.right.maxPower
+                    );
+                    
+                    const moveAmount = Game.STEERING.BASE_MOVE + 
+                                     (Game.STEERING.MAX_MOVE - Game.STEERING.BASE_MOVE) * Game.input.right.power;
+                    this.targetX += moveAmount * deltaTime;
+                    
+                } else {
+                    Game.input.right.power = Math.max(
+                        0,
+                        Game.input.right.power - Game.STEERING.POWER_DECREASE * deltaTime
+                    );
+                    Game.input.right.holdTime = 0;
+                }
+                
+                // Update steering indicator
+                updateSteeringIndicator();
+            }
+            
+            draw() {
+                const ctx = Elements.ctx;
+                
+                // Car body with glow effect when boosting
+                if (Game.input.boost || Game.input.nitro) {
+                    ctx.shadowColor = Game.input.nitro ? '#00ffff' : '#ff00ff';
+                    ctx.shadowBlur = 15;
+                }
+                
+                ctx.fillStyle = '#00aaff';
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                
+                // Reset shadow
+                ctx.shadowColor = 'transparent';
+                ctx.shadowBlur = 0;
+                
+                // Windows
+                ctx.fillStyle = '#88ddff';
+                ctx.fillRect(this.x + 5, this.y + 5, this.width - 10, 20);
+                ctx.fillRect(this.x + 5, this.y + this.height - 25, this.width - 10, 20);
+                
+                // Lights
+                ctx.fillStyle = '#ffffaa';
+                ctx.fillRect(this.x + 5, this.y + 2, 8, 6);
+                ctx.fillRect(this.x + this.width - 13, this.y + 2, 8, 6);
+                
+                ctx.fillStyle = '#ff4444';
+                ctx.fillRect(this.x + 5, this.y + this.height - 8, 8, 6);
+                ctx.fillRect(this.x + this.width - 13, this.y + this.height - 8, 8, 6);
+                
+                // Wheels with rotation effect
+                ctx.fillStyle = '#111111';
+                const wheelRotation = Game.frames * 0.1;
+                
+                // Front wheels
+                ctx.save();
+                ctx.translate(this.x - 2.5, this.y + 26);
+                ctx.rotate(wheelRotation);
+                ctx.fillRect(-2.5, -11, 5, 22);
+                ctx.restore();
+                
+                ctx.save();
+                ctx.translate(this.x + this.width + 2.5, this.y + 26);
+                ctx.rotate(wheelRotation);
+                ctx.fillRect(-2.5, -11, 5, 22);
+                ctx.restore();
+                
+                // Rear wheels
+                ctx.save();
+                ctx.translate(this.x - 2.5, this.y + this.height - 26);
+                ctx.rotate(wheelRotation);
+                ctx.fillRect(-2.5, -11, 5, 22);
+                ctx.restore();
+                
+                ctx.save();
+                ctx.translate(this.x + this.width + 2.5, this.y + this.height - 26);
+                ctx.rotate(wheelRotation);
+                ctx.fillRect(-2.5, -11, 5, 22);
+                ctx.restore();
+                
+                // Nitro/Boost effect
+                if (Game.input.nitro && this.nitroFuel > 15) {
+                    ctx.fillStyle = '#00ffff';
+                    for (let i = 0; i < 3; i++) {
+                        const width = 8 + Math.random() * 4;
+                        const height = 20 + Math.random() * 10;
+                        const offset = (i - 1) * 12;
+                        
+                        ctx.beginPath();
+                        ctx.ellipse(
+                            this.x + this.width/2 + offset,
+                            this.y + this.height + height/2,
+                            width/2,
+                            height/2,
+                            0, 0, Math.PI * 2
+                        );
+                        ctx.fill();
+                    }
+                } else if (Game.input.boost) {
+                    ctx.fillStyle = '#ff00ff';
+                    for (let i = 0; i < 2; i++) {
+                        const width = 6 + Math.random() * 3;
+                        const height = 15 + Math.random() * 8;
+                        const offset = (i - 0.5) * 10;
+                        
+                        ctx.beginPath();
+                        ctx.ellipse(
+                            this.x + this.width/2 + offset,
+                            this.y + this.height + height/2,
+                            width/2,
+                            height/2,
+                            0, 0, Math.PI * 2
+                        );
+                        ctx.fill();
+                    }
+                }
+            }
+        }
+
+        // =============== OBSTACLE SYSTEM ===============
+        class Obstacle {
+            constructor() {
+                this.reset();
+            }
+            
+            reset() {
+                const settings = Difficulty[Game.difficulty];
+                this.width = 40 + Math.random() * 30;
+                this.height = 60 + Math.random() * 30;
+                this.x = Game.roadX + 20 + Math.random() * (Game.roadWidth - this.width - 40);
+                this.y = -this.height;
+                this.speed = settings.opponentSpeed + Math.random() * 2;
+                this.speed += (Game.level - 1) * 0.15;
+                this.color = Math.random() > 0.3 ? '#ff4444' : '#ffaa00';
+                this.type = Math.random() > 0.3 ? 'car' : 'obstacle';
+                this.active = true;
+            }
+            
+            update(deltaTime) {
+                if (!this.active) return false;
+                
+                this.y += this.speed * deltaTime;
+                
+                if (this.y > Elements.canvas.height) {
+                    Game.score += 10;
+                    return false;
+                }
+                
+                return true;
+            }
+            
+            draw() {
+                if (!this.active) return;
+                
+                const ctx = Elements.ctx;
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                
+                if (this.type === 'car') {
+                    ctx.fillStyle = '#aa0000';
+                    ctx.fillRect(this.x + 5, this.y + 5, this.width - 10, 15);
+                    ctx.fillRect(this.x + 5, this.y + this.height - 20, this.width - 10, 15);
+                }
+            }
+            
+            collidesWith(player) {
+                return (
+                    player.x < this.x + this.width &&
+                    player.x + player.width > this.x &&
+                    player.y < this.y + this.height &&
+                    player.y + player.height > this.y
+                );
+            }
+        }
+
+        // =============== STEERING INDICATOR ===============
+        function updateSteeringIndicator() {
+            const leftPower = Game.input.left.power;
+            const rightPower = Game.input.right.power;
+            
+            // Determine which direction has power
+            if (leftPower > 0 || rightPower > 0) {
+                Elements.steeringIndicator.classList.add('active');
+                
+                // Calculate total power and direction
+                const totalPower = Math.max(leftPower, rightPower);
+                const isLeft = leftPower > rightPower;
+                
+                // Set indicator width and color
+                const widthPercent = totalPower * 100;
+                Elements.indicatorFill.style.width = `${widthPercent}%`;
+                Elements.indicatorFill.style.left = isLeft ? `${50 - widthPercent}%` : '50%';
+                
+                // Update color based on power
+                let color;
+                if (totalPower < 0.33) {
+                    color = '#00ff00'; // Green for low power
+                } else if (totalPower < 0.66) {
+                    color = '#ffff00'; // Yellow for medium power
+                } else {
+                    color = '#ff0000'; // Red for high power
+                }
+                Elements.indicatorFill.style.background = `linear-gradient(to ${isLeft ? 'left' : 'right'}, ${color}, ${color})`;
+                
+            } else {
+                Elements.steeringIndicator.classList.remove('active');
+            }
+        }
+
+        // =============== GAME FUNCTIONS ===============
+        function initGame() {
+            // Reset game state
+            Game.score = 0;
+            Game.level = 1;
+            Game.speed = 0;
+            Game.time = 0;
+            Game.nitro = 100;
+            Game.frames = 0;
+            Game.obstacles = [];
+            
+            // Reset enhanced input
+            Game.input.left.active = false;
+            Game.input.left.power = 0;
+            Game.input.left.holdTime = 0;
+            Game.input.right.active = false;
+            Game.input.right.power = 0;
+            Game.input.right.holdTime = 0;
+            Game.input.boost = false;
+            Game.input.nitro = false;
+            
+            // Create player
+            Game.player = new Player();
+            
+            // Update UI
+            updateUI();
+            
+            // Hide steering indicator initially
+            Elements.steeringIndicator.classList.remove('active');
+        }
+
+        function updateGame(deltaTime) {
+            if (Game.state !== 'playing') return;
+            
+            // Update player with enhanced steering
+            Game.player.update(deltaTime);
+            
+            // Spawn obstacles
+            const settings = Difficulty[Game.difficulty];
+            if (Game.obstacles.length < settings.maxOpponents && 
+                Math.random() < 0.015 * deltaTime) {
+                const obstacle = new Obstacle();
+                Game.obstacles.push(obstacle);
+            }
+            
+            // Update obstacles
+            for (let i = Game.obstacles.length - 1; i >= 0; i--) {
+                const obstacle = Game.obstacles[i];
+                
+                if (!obstacle.update(deltaTime)) {
+                    Game.obstacles.splice(i, 1);
+                } else if (obstacle.collidesWith(Game.player)) {
+                    gameOver();
+                    return;
+                }
+            }
+            
+            // Update score and level
+            Game.frames++;
+            if (Game.frames % 60 === 0) {
+                Game.time++;
+                Game.score += 5;
+                
+                // Level up every 500 points
+                const newLevel = Math.floor(Game.score / 500) + 1;
+                if (newLevel > Game.level) {
+                    Game.level = newLevel;
+                }
+                
+                updateUI();
+            }
+        }
+
+        function renderGame() {
+            const ctx = Elements.ctx;
+            const canvas = Elements.canvas;
+            
+            // Clear canvas with gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#000022');
+            gradient.addColorStop(1, '#000011');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw road
+            drawRoad();
+            
+            // Draw obstacles
+            Game.obstacles.forEach(obstacle => obstacle.draw());
+            
+            // Draw player
+            if (Game.player) {
+                Game.player.draw();
+            }
+            
+            // Draw enhanced road markings
+            if (Game.player && Game.player.speed > 0) {
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([10, 20]);
+                ctx.lineDashOffset = -Game.frames * 0.8;
+                
+                // Center line
+                ctx.beginPath();
+                ctx.moveTo(Game.roadX + Game.roadWidth / 2, 0);
+                ctx.lineTo(Game.roadX + Game.roadWidth / 2, canvas.height);
+                ctx.stroke();
+                
+                ctx.setLineDash([]);
+            }
+        }
+
+        function drawRoad() {
+            const ctx = Elements.ctx;
+            const roadX = Game.roadX;
+            const roadWidth = Game.roadWidth;
+            const canvasHeight = Elements.canvas.height;
+            
+            // Road surface with perspective effect
+            ctx.fillStyle = '#334466';
+            ctx.fillRect(roadX, 0, roadWidth, canvasHeight);
+            
+            // Road shoulders with gradient
+            const shoulderGradient = ctx.createLinearGradient(0, 0, 0, canvasHeight);
+            shoulderGradient.addColorStop(0, '#222244');
+            shoulderGradient.addColorStop(1, '#111133');
+            
+            ctx.fillStyle = shoulderGradient;
+            ctx.fillRect(roadX - 20, 0, 20, canvasHeight);
+            ctx.fillRect(roadX + roadWidth, 0, 20, canvasHeight);
+            
+            // Shoulder markings
+            ctx.strokeStyle = '#445588';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < canvasHeight; i += 40) {
+                const y = (i + Game.frames * 0.5) % canvasHeight;
+                ctx.beginPath();
+                ctx.moveTo(roadX - 10, y);
+                ctx.lineTo(roadX - 10, y + 20);
+                ctx.moveTo(roadX + roadWidth + 10, y);
+                ctx.lineTo(roadX + roadWidth + 10, y + 20);
+                ctx.stroke();
+            }
+        }
+
+        function gameLoop(currentTime) {
+            // Calculate delta time
+            Performance.deltaTime = Math.min((currentTime - Performance.lastTime) / 16.67, 2);
+            Performance.lastTime = currentTime;
+            
+            // Update and render
+            updateGame(Performance.deltaTime);
+            renderGame();
+            
+            // Continue loop
+            if (Game.state === 'playing') {
+                Game.gameLoopId = requestAnimationFrame(gameLoop);
+            }
+        }
+
+        // =============== GAME STATE MANAGEMENT ===============
+        function startGame() {
+            if (Game.state === 'menu' || Game.state === 'gameover') {
+                initGame();
+            }
+            
+            Game.state = 'playing';
+            hideAllMenus();
+            
+            Performance.lastTime = performance.now();
+            Game.gameLoopId = requestAnimationFrame(gameLoop);
+        }
+
+        function pauseGame() {
+            if (Game.state !== 'playing') return;
+            
+            Game.state = 'paused';
+            cancelAnimationFrame(Game.gameLoopId);
+            Elements.pauseMenu.classList.remove('hidden');
+        }
+
+        function resumeGame() {
+            if (Game.state !== 'paused') return;
+            
+            Game.state = 'playing';
+            Elements.pauseMenu.classList.add('hidden');
+            Performance.lastTime = performance.now();
+            Game.gameLoopId = requestAnimationFrame(gameLoop);
+        }
+
+        function gameOver() {
+            Game.state = 'gameover';
+            cancelAnimationFrame(Game.gameLoopId);
+            
+            // Update high scores
+            updateHighScores();
+            
+            // Update display
+            Elements.finalScore.textContent = Game.score;
+            Elements.finalLevel.textContent = Game.level;
+            
+            // Get high score
+            const highScores = JSON.parse(localStorage.getItem('raceStreetHighScores') || '[]');
+            const highScore = highScores.length > 0 ? Math.max(...highScores.map(s => s.score)) : 0;
+            Elements.highScoreDisplay.textContent = highScore;
+            
+            Elements.gameOverScreen.classList.remove('hidden');
+        }
+
+        function hideAllMenus() {
+            Elements.mainMenu.classList.add('hidden');
+            Elements.pauseMenu.classList.add('hidden');
+            Elements.gameOverScreen.classList.add('hidden');
+            Elements.howToPlayScreen.classList.add('hidden');
+        }
+
+        // =============== ENHANCED INPUT HANDLING ===============
+        function setupEnhancedInput() {
+            const leftBtn = document.getElementById('btnLeft');
+            const rightBtn = document.getElementById('btnRight');
+            const boostBtn = document.getElementById('btnBoost');
+            const nitroBtn = document.getElementById('btnNitro');
+            const pauseBtn = document.getElementById('btnPause');
+            
+            // Left button - enhanced steering
+            setupSteeringButton(leftBtn, 'left');
+            
+            // Right button - enhanced steering
+            setupSteeringButton(rightBtn, 'right');
+            
+            // Boost button - hold
+            setupHoldButton(boostBtn, 'boost');
+            
+            // Nitro button - tap
+            setupTapButton(nitroBtn, 'nitro');
+            
+            // Pause button - toggle
+            pauseBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (Game.state === 'playing') {
+                    pauseGame();
+                } else if (Game.state === 'paused') {
+                    resumeGame();
+                }
+            });
+            
+            // Keyboard controls
+            setupKeyboardControls();
+        }
+        
+        function setupSteeringButton(button, direction) {
+            let touchId = null;
+            let mouseDown = false;
+            let holdTimer = null;
+            
+            const activate = () => {
+                Game.input[direction].active = true;
+                button.classList.add('holding');
+                
+                // Start hold timer for visual feedback
+                holdTimer = setTimeout(() => {
+                    if (Game.input[direction].active) {
+                        // Add extra visual feedback for long hold
+                        button.style.boxShadow = '0 3px 0 rgba(0, 0, 0, 0.5), 0 0 20px #00ffff';
+                    }
+                }, 300);
+            };
+            
+            const deactivate = () => {
+                Game.input[direction].active = false;
+                button.classList.remove('holding');
+                button.style.boxShadow = '';
+                
+                if (holdTimer) {
+                    clearTimeout(holdTimer);
+                    holdTimer = null;
+                }
+            };
+            
+            // Touch events
+            button.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                if (touchId === null) {
+                    touchId = e.changedTouches[0].identifier;
+                    activate();
+                }
+            }, { passive: false });
+            
+            button.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                for (let touch of e.changedTouches) {
+                    if (touch.identifier === touchId) {
+                        touchId = null;
+                        deactivate();
+                        break;
+                    }
+                }
+            }, { passive: false });
+            
+            button.addEventListener('touchcancel', (e) => {
+                e.preventDefault();
+                for (let touch of e.changedTouches) {
+                    if (touch.identifier === touchId) {
+                        touchId = null;
+                        deactivate();
+                        break;
+                    }
+                }
+            }, { passive: false });
+            
+            // Mouse events
+            button.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                if (!mouseDown) {
+                    mouseDown = true;
+                    activate();
+                }
+            });
+            
+            button.addEventListener('mouseup', (e) => {
+                e.preventDefault();
+                if (mouseDown) {
+                    mouseDown = false;
+                    deactivate();
+                }
+            });
+            
+            button.addEventListener('mouseleave', (e) => {
+                e.preventDefault();
+                if (mouseDown) {
+                    mouseDown = false;
+                    deactivate();
+                }
+            });
+        }
+        
+        function setupHoldButton(button, action) {
+            let active = false;
+            
+            const activate = () => {
+                active = true;
+                Game.input[action] = true;
+            };
+            
+            const deactivate = () => {
+                active = false;
+                Game.input[action] = false;
+            };
+            
+            // Touch events
+            button.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                activate();
+            }, { passive: false });
+            
+            button.addEventListener('touchend', deactivate);
+            button.addEventListener('touchcancel', deactivate);
+            
+            // Mouse events
+            button.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                activate();
+            });
+            
+            button.addEventListener('mouseup', deactivate);
+            button.addEventListener('mouseleave', deactivate);
+        }
+        
+        function setupTapButton(button, action) {
+            button.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                Game.input[action] = true;
+                setTimeout(() => {
+                    Game.input[action] = false;
+                }, 300);
+            }, { passive: false });
+            
+            button.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                Game.input[action] = true;
+                setTimeout(() => {
+                    Game.input[action] = false;
+                }, 300);
+            });
+        }
+        
+        function setupKeyboardControls() {
+            document.addEventListener('keydown', (e) => {
+                if (Game.state !== 'playing') return;
+                
+                switch(e.key.toLowerCase()) {
+                    case 'arrowleft':
+                    case 'a':
+                        if (!Game.input.left.active) {
+                            Game.input.left.active = true;
+                        }
+                        break;
+                    case 'arrowright':
+                    case 'd':
+                        if (!Game.input.right.active) {
+                            Game.input.right.active = true;
+                        }
+                        break;
+                    case ' ':
+                        Game.input.boost = true;
+                        break;
+                    case 'shift':
+                    case 'n':
+                        Game.input.nitro = true;
+                        setTimeout(() => Game.input.nitro = false, 300);
+                        break;
+                    case 'escape':
+                    case 'p':
+                        pauseGame();
+                        break;
+                }
+            });
+            
+            document.addEventListener('keyup', (e) => {
+                switch(e.key.toLowerCase()) {
+                    case 'arrowleft':
+                    case 'a':
+                        Game.input.left.active = false;
+                        break;
+                    case 'arrowright':
+                    case 'd':
+                        Game.input.right.active = false;
+                        break;
+                    case ' ':
+                        Game.input.boost = false;
+                        break;
+                }
+            });
+        }
+
+        // =============== HIGH SCORES SYSTEM ===============
+        function updateHighScores() {
+            const saved = localStorage.getItem('raceStreetHighScores');
+            let highScores = saved ? JSON.parse(saved) : [];
+            
+            // Add current score
+            highScores.push({
+                score: Game.score,
+                level: Game.level,
+                date: new Date().toLocaleDateString()
+            });
+            
+            // Sort by score (descending)
+            highScores.sort((a, b) => b.score - a.score);
+            
+            // Keep only top 10
+            highScores = highScores.slice(0, 10);
+            
+            // Save to localStorage
+            localStorage.setItem('raceStreetHighScores', JSON.stringify(highScores));
+        }
+
+        // =============== UI UPDATES ===============
+        function updateUI() {
+            Elements.scoreDisplay.textContent = Game.score;
+            Elements.speedDisplay.textContent = Game.speed + ' km/h';
+            Elements.levelDisplay.textContent = Game.level;
+            
+            // Update nitro bar
+            const nitroPercent = Game.nitro;
+            Elements.nitroBar.style.height = nitroPercent + '%';
+            Elements.nitroText.textContent = Math.round(nitroPercent) + '%';
+            
+            // Color based on nitro level
+            if (nitroPercent > 60) {
+                Elements.nitroBar.style.background = 'linear-gradient(to top, #00ffff 0%, #0088ff 100%)';
+            } else if (nitroPercent > 30) {
+                Elements.nitroBar.style.background = 'linear-gradient(to top, #ffff00 0%, #ff8800 100%)';
+            } else {
+                Elements.nitroBar.style.background = 'linear-gradient(to top, #ff0000 0%, #ff4400 100%)';
+            }
+        }
+
+        // =============== RESIZE HANDLING ===============
+        function handleResize() {
+            Elements.canvas.width = window.innerWidth;
+            Elements.canvas.height = window.innerHeight;
+            
+            // Update road dimensions
+            Game.roadWidth = Math.min(450, Elements.canvas.width * 0.75);
+            Game.roadX = (Elements.canvas.width - Game.roadWidth) / 2;
+            
+            // Update player position
+            if (Game.player) {
+                Game.player.x = Math.max(Game.roadX + 20,
+                    Math.min(Game.player.x, Game.roadX + Game.roadWidth - Game.player.width - 20));
+                Game.player.y = Elements.canvas.height * Game.PLAYER_Y_POSITION;
+                Game.player.targetX = Game.player.x;
+            }
+            
+            // Re-render if in menu
+            if (Game.state === 'menu') {
+                renderGame();
+            }
+        }
+
+        function toggleFullscreen() {
+            const container = document.getElementById('gameContainer');
+            const icon = document.querySelector('#fullscreenBtn i');
+            
+            if (!Game.isFullscreen) {
+                if (container.requestFullscreen) container.requestFullscreen();
+                else if (container.webkitRequestFullscreen) container.webkitRequestFullscreen();
+                else if (container.msRequestFullscreen) container.msRequestFullscreen();
+                Game.isFullscreen = true;
+                icon.className = 'fas fa-compress';
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+                else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+                else if (document.msExitFullscreen) document.msExitFullscreen();
+                Game.isFullscreen = false;
+                icon.className = 'fas fa-expand';
+            }
+        }
+
+        // =============== INITIALIZATION ===============
+        function init() {
+            // Setup canvas context
+            Elements.ctx = Elements.canvas.getContext('2d');
+            
+            // Initial resize
+            handleResize();
+            
+            // Setup enhanced input
+            setupEnhancedInput();
+            
+            // Setup menu buttons
+            document.getElementById('startGameBtn').addEventListener('click', startGame);
+            document.getElementById('howToPlayBtn').addEventListener('click', () => {
+                hideAllMenus();
+                Elements.howToPlayScreen.classList.remove('hidden');
+            });
+            document.getElementById('backFromHowToBtn').addEventListener('click', () => {
+                hideAllMenus();
+                Elements.mainMenu.classList.remove('hidden');
+            });
+            document.getElementById('resumeGameBtn').addEventListener('click', resumeGame);
+            document.getElementById('restartPauseBtn').addEventListener('click', () => {
+                initGame();
+                startGame();
+            });
+            document.getElementById('menuFromPauseBtn').addEventListener('click', () => {
+                Game.state = 'menu';
+                hideAllMenus();
+                Elements.mainMenu.classList.remove('hidden');
+            });
+            document.getElementById('playAgainBtn').addEventListener('click', () => {
+                initGame();
+                startGame();
+            });
+            document.getElementById('menuFromGameOverBtn').addEventListener('click', () => {
+                Game.state = 'menu';
+                hideAllMenus();
+                Elements.mainMenu.classList.remove('hidden');
+            });
+            document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+            
+            // Difficulty buttons
+            document.querySelectorAll('.difficulty-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.difficulty-btn').forEach(b => {
+                        b.classList.remove('active');
+                    });
+                    this.classList.add('active');
+                    Game.difficulty = this.dataset.difficulty;
+                });
+            });
+            
+            // Event listeners
+            window.addEventListener('resize', handleResize);
+            window.addEventListener('orientationchange', () => {
+                setTimeout(handleResize, 100);
+            });
+            
+            // Handle visibility change
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden && Game.state === 'playing') {
+                    pauseGame();
+                }
+            });
+            
+            // Prevent unwanted behaviors
+            document.addEventListener('contextmenu', e => e.preventDefault());
+            document.addEventListener('touchmove', e => {
+                if (e.scale !== 1) e.preventDefault();
+            }, { passive: false });
+            
+            // Hide loading screen
+            setTimeout(() => {
+                Elements.loadingScreen.classList.add('hidden');
+                Elements.mainMenu.classList.remove('hidden');
+                
+                // Initial render
+                renderGame();
+            }, 800);
+        }
+
+        // Start everything
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
